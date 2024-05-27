@@ -4,27 +4,27 @@ const MEM_TABLE_LIMIT uint32 = 4096 * 1024 // 4MB
 
 type MemTable struct {
 	Entries []KeyValue
-	Size uint32
-	Limit uint32
+	Size    uint32
+	Limit   uint32
 }
 
 func NewMembTale() *MemTable {
 	return &MemTable{
 		Entries: make([]KeyValue, 0),
-		Size: 0,
-		Limit: MEM_TABLE_LIMIT,
+		Size:    0,
+		Limit:   MEM_TABLE_LIMIT,
 	}
 }
 
 func (mt *MemTable) Get(key string) (string, error) {
-	for (i:=len(mt.Entries)-1;i>0;i--) {
+	for i := len(mt.Entries) - 1; i > 0; i-- {
 		if mt.Entries[i].Key == key {
 			return mt.Entries[i].Value, nil
 		}
 	}
-	return  "", errors.New("key not found")
+	return "", errors.New("key not found")
 }
- 
+
 func (mt *MemTable) Put(key, val string, del bool) error {
 	kv := NewKeyValue(key, val, del)
 	mt.Entries = append(mt.Entries, kv)
@@ -49,14 +49,14 @@ func (mt *MemTable) Delete(key string) error {
 
 func (mt *MemTable) flush() error {
 	// write it to disk
-	
+
 	// reset memtable
 	err := mt.clear()
 	if err != nil {
 		return err
 	}
-	return nill
-		
+	return nil
+
 }
 
 func (mt *MemTable) clear() error {

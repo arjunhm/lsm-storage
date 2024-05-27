@@ -1,20 +1,20 @@
 package lsm
 
 type KeyValue struct {
-	Key string
-	Value string
+	Key     string
+	Value   string
 	Deleted bool
-	Size uint32
+	Size    uint32
 }
 
-func NewKeyValue(key, val string, deleted bool) *KeyValue {
-	kv := KeyValue{
-		Key: key,
-		Value: val,
+func NewKeyValue(key string, val string, deleted bool) *KeyValue {
+	kv := &KeyValue{
+		Key:     key,
+		Value:   val,
 		Deleted: false,
-		Size: 0,
+		Size:    0,
 	}
-	kv.Size = uint32(len(kv.Key) + uint32(len(kv.Value))
+	kv.Size = uint32(len(kv.Key)) + uint32(len(kv.Value))
 	return &kv
 }
 
@@ -25,4 +25,3 @@ func (kv *KeyValue) GetKeySize() uint32 {
 func (kv *KeyValue) GetValueSize() uint32 {
 	return uint32(len(kv.Value))
 }
-
