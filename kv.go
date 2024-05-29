@@ -7,15 +7,14 @@ type KeyValue struct {
 	Size    uint32
 }
 
-func NewKeyValue(key string, val string, deleted bool) *KeyValue {
+func NewKeyValue(key, val string, del bool) *KeyValue {
 	kv := &KeyValue{
 		Key:     key,
 		Value:   val,
-		Deleted: false,
-		Size:    0,
+		Deleted: del,
 	}
-	kv.Size = uint32(len(kv.Key)) + uint32(len(kv.Value))
-	return &kv
+	kv.UpdateSize()
+	return kv
 }
 
 func (kv *KeyValue) GetKeySize() uint32 {
@@ -24,4 +23,12 @@ func (kv *KeyValue) GetKeySize() uint32 {
 
 func (kv *KeyValue) GetValueSize() uint32 {
 	return uint32(len(kv.Value))
+}
+
+func (kv *KeyValue) UpdateSize() {
+	kv.Size = kv.GetKeySize() + kv.GetValueSize()
+}
+
+func (kv *KeyValue) GetSize() uint32 {
+	return kv.Size
 }

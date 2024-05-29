@@ -1,39 +1,76 @@
 package lsm
 
-const MEM_TABLE_LIMIT uint32 = 4096 * 1024 // 4MB
+const MEM_TABLE_LIMIT uint32 = 4096 * 1024 //4MB
 
 type MemTable struct {
-	Entries []KeyValue
 	Size    uint32
 	Limit   uint32
+	Entries []KeyValue
 }
 
-func NewMembTale() *MemTable {
+func NewMemTable() *MemTable {
 	return &MemTable{
 		Entries: make([]KeyValue, 0),
-		Size:    0,
 		Limit:   MEM_TABLE_LIMIT,
 	}
 }
 
-func (mt *MemTable) Get(key string) (string, error) {
-	for i := len(mt.Entries) - 1; i > 0; i-- {
-		if mt.Entries[i].Key == key {
-			return mt.Entries[i].Value, nil
-		}
-	}
-	return "", errors.New("key not found")
+// ----- HELPER -----
+func (mt *MemTable) GetSize() uint32 {
+	return mt.Size
 }
 
-func (mt *MemTable) Put(key, val string, del bool) error {
-	kv := NewKeyValue(key, val, del)
-	mt.Entries = append(mt.Entries, kv)
-	err := mt.IncSize(kv.Size)
+func (mt *MemTable) incSize(sz uint32) {
+	mt.Size += sz
+	// flush here?
+}
+
+func (mt *MemTable) isFull() bool {
+	return mt.Size >= mt.Limit
+}
+
+func (mt *MemTable) clear() error {
+	mt.Entries = []Entry{}
+	mt.Size = 0
+	return nil
+}
+
+func (mt *MemTable) flush() error {
+	// flush to disk
+
+	err := mt.clear()
 	if err != nil {
 		return err
 	}
+	return nil
+}
 
-	if mt.IsFull() {
+// ----- CRUD -----
+
+// ? return KeyValue instead?
+func (mt *MemTable) Get(key string) (string, error) {
+	// naive for now 😭
+	for i := len(mt.Entries) - 1; i >= 0; i-- {
+		e := mt.Entries[i]
+		if e.Key == key {
+			// ! --- may have to change this later ---
+			if e.Deleted == true {
+				return "", nil
+			} else {
+				return e.Value, nil
+			}
+		}
+	}
+
+	return "", errors.New("key not found")
+}
+
+func (mt *MemTable) Put(kv KeyValue) error {
+	var err error
+	mt.Entries = append(mt.Entries, kv)
+	mt.incSize(kv.Size)
+
+	if mt.isFull() {
 		err = mt.flush()
 		if err != nil {
 			return err
@@ -44,36 +81,11 @@ func (mt *MemTable) Put(key, val string, del bool) error {
 }
 
 func (mt *MemTable) Delete(key string) error {
-	return Add(key, "", true)
-}
+	kv := NewKeyValue(key, "", true)
 
-func (mt *MemTable) flush() error {
-	// write it to disk
-
-	// reset memtable
-	err := mt.clear()
+	err := mt.Put(kv)
 	if err != nil {
 		return err
 	}
 	return nil
-
-}
-
-func (mt *MemTable) clear() error {
-	mt.Entries = []Entry{}
-	mt.Size = 0
-	return nil
-}
-
-func (mt *MemTable) GetSize() uint32 {
-	return mt.Size
-}
-
-func (mt *MemTable) IncSize(sz uint32) error {
-	mt.Size += sz
-	return nil
-}
-
-func (mt *MemTable) IsFull() bool {
-	return mt.Size >= mt.Limit
 }
