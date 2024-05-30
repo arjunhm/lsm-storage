@@ -38,8 +38,34 @@ func (mt *MemTable) clear() error {
 }
 
 func (mt *MemTable) flush() error {
+	var err error
 	// flush to disk
-	err := mt.clear()
+	i := 0
+	var curSize uint32 = 0
+	sst := NewSSTable()
+
+	for j := 0; j < len(mt.Entries); j++ {
+		kvSize := mt.Entries[i].GetSize()
+		if curSize+kvSize <= BLOCK_DATA_SIZE {
+			curSize += kvSize
+		} else {
+			err = sst.CreateBlock(mt.Entries[i:j])
+			if err != nil {
+				return err
+			}
+			i = j
+			curSize = 0
+		}
+	}
+
+	// write SSTable to disk
+	err = sst.Write()
+	if err != nil {
+		return err
+	}
+
+	// clear memtable
+	err = mt.clear()
 	if err != nil {
 		return err
 	}
