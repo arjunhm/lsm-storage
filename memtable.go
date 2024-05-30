@@ -37,7 +37,6 @@ func (mt *MemTable) clear() error {
 
 func (mt *MemTable) flush() error {
 	// flush to disk
-
 	err := mt.clear()
 	if err != nil {
 		return err
@@ -70,6 +69,7 @@ func (mt *MemTable) Put(kv KeyValue) error {
 	mt.Entries = append(mt.Entries, kv)
 	mt.incSize(kv.Size)
 
+	// update WAL
 	if mt.isFull() {
 		err = mt.flush()
 		if err != nil {
