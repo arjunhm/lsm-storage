@@ -13,8 +13,16 @@ type SSTableHeader struct {
 
 func NewSSTableHeader() *SSTableHeader {
 	return &SSTableHeader{
-		Size: MEM_TABLE_LIMIT,
+		Size: 0,
 	}
+}
+
+func (header *SSTableHeader) SetSize(sz uint32) {
+	header.Size = sz
+}
+
+func (header *SSTableHeader) IncSize(sz uint32) {
+	header.Size += sz
 }
 
 type SSTable struct {
@@ -32,13 +40,39 @@ func NewSSTable() *SSTable {
 	}
 }
 
+func (s *SSTable) AddIndex(key string, offset uint32) {
+	s.Index[key] = offset
+}
+
+func (s *SSTable) CreateBlock(entries []KeyValue) error {
+	var offset uint32
+	var err error
+
+	b := *NewBlock()
+	for i := 0; i < len(entries); i++ {
+		// add k-v to block
+		err = b.Put(entries[i])
+		if err != nil {
+			return err
+		}
+		// update index
+		offset = b.header.GetOffset()
+		s.AddIndex(entries[i].Key, offset)
+	}
+
+	s.Data = append(s.Data, b)
+	// update header
+	s.header.IncSize(BLOCK_SIZE)
+	return nil
+}
+
 func (s *SSTable) Write() error {
 	/*
 		storing the contents of SSTable to disk.
 
 		file layout
-		0			  4			m		  n
-		----------------------------------
+		 0			   4		m		  n
+		 ---------------------------------
 		| indexOffset |  data  |  index  |
 		---------------------------------
 		indexOffset: byte offset from where index begins
