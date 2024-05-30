@@ -5,6 +5,22 @@ import (
 	"strings"
 )
 
+/*
+BlockHeader layout
+
+ 0		4		 8
+ ----------------
+| count | offset|
+----------------
+
+Block.Data layout
+ 0	 	 	    4		       8	 k	  v	
+ ------------------------------------------
+| key-size (k) | val-size (v) | key	| val |
+------------------------------------------
+
+*/
+
 const (
 	BLOCK_SIZE        uint32 = 4096 // 4KB
 	BLOCK_HEADER_SIZE uint32 = 8    // 8B
@@ -34,6 +50,7 @@ func (bh *BlockHeader) SetOffset(offset uint32) {
 func (bh *BlockHeader) GetOffset() uint32 {
 	return bh.offset
 }
+
 
 // --- block ---
 
@@ -85,4 +102,24 @@ func (b *Block) Get(offset uint32, key string) (string, error) {
 	return "", errors.New("value not found")
 }
 
-// no put, delete since its immutable
+func (b *Block) Put(kv KeyValue) error {
+	offset := b.header.GetOffset()
+	if offset + kv.GetSize() > BLOCK_DATA_SIZE {
+		return errors.New("insufficient space")
+	}
+
+	keySize := kv.GetKeySize()
+	valSize := kv.GetValueSize()
+	keyStart := offset + KEY_SIZE + VAL_SIZE
+	keyEnd := keyStart + keySize
+	valEnd := keyEnd + valSize
+
+	Putuint32(b.Data[offset: offset+KEY_SIZE], keySize)
+	Putuint32(b.Data[offset+KEY_SIZE: keyStart], valSize)
+	Putuint32(b.Data[keyStart: keyEnd], kv.Key)
+	Putuint32(b.Data[keyEnd: valEnd], kv.Value)
+	
+	b.header.SetOffset(keySize + KEY_SIZE + VAL_SIZE)
+	b.header.count += 1
+
+}
