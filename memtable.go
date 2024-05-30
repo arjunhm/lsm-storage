@@ -1,5 +1,7 @@
 package lsm
 
+import "errors"
+
 const MEM_TABLE_LIMIT uint32 = 4096 * 1024 //4MB
 
 type MemTable struct {
@@ -30,7 +32,7 @@ func (mt *MemTable) isFull() bool {
 }
 
 func (mt *MemTable) clear() error {
-	mt.Entries = []Entry{}
+	mt.Entries = []KeyValue{}
 	mt.Size = 0
 	return nil
 }
@@ -81,7 +83,7 @@ func (mt *MemTable) Put(kv KeyValue) error {
 }
 
 func (mt *MemTable) Delete(key string) error {
-	kv := NewKeyValue(key, "", true)
+	kv := *NewKeyValue(key, "", true)
 
 	err := mt.Put(kv)
 	if err != nil {
