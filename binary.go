@@ -1,6 +1,8 @@
 package lsm
 
-import "encoding/binary"
+import (
+	"encoding/binary"
+)
 
 func Putuint32(buf []byte, val uint32) {
 	binary.LittleEndian.PutUint32(buf, val)
