@@ -1,37 +1,45 @@
 # Log Structured Storage
 
 ## MemTable
-- in-memory. append only.
-- all operations go here.
-- keep it simple for now. like array of K-V pairs. implement skiplist later.
-- flush to disk once size exceeds limit.
+in-memory. append only. all operations go here.  
+keep it simple for now. like array of K-V pairs. implement skiplist later.  
+flush to disk once size exceeds limit.  
 
-### Attributes
+#### Attributes
 - size: the current size of the memtable
 - limit: the max size it can accomodate.
 - entries: list of key-value pairs
 
-### Operations
+#### Operations
 - get(kv): returns kv pair if found, else error.
 - put(kv): appends key-value pair. updates size. if `size` > `limit`, flush.
 - delete(kv): appends key-value pair but marks as deleted. calls `put(kv)`.
 - clear(): clears the contents of memtable.
 - flush(): flushes contents of memtable to disk, and calls `clear()`.
 
-# SSTable
-- append-only immutable page.
-- unsorted for now.
-- merge with other SSTable once condition is met (determine condition later)
-- has its own index?? maps key to byte offset of value
-- Data: `<key-size, val-size, key-data, val-data>`
+## Block
+contains KV-pairs. limited to 4KB.  
 
-### Attributes
-- header:
+#### Attributes
+- header: holds freespace offset and other metadata
+- data: byte array of key-value pairs. `<key-size, val-size, key-data, val-data>`.
+
+#### Operations
+- get(offset, key): fetches value for a given key
+
+## SSTable
+append-only immutable page.  unsorted for now.  
+merge with other SSTable once condition is met (determine condition later).  
+has its own index. maps key to byte offset of value.  
+
+#### Attributes
+- header: size of SSTable + other metadata
 - index: maps key to byte offset
-- data: byte array of key-value pairs
+- blocks: array of `Block`
 - file: file on disk
 
-### Operations
+#### Operations
 - create(data): creates file on disk with data. builds index.
 - write(): writes contents to disk
 - read(): loads data from disk
+
