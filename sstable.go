@@ -26,94 +26,125 @@ type SSTable struct {
 
 func NewSSTable() *SSTable {
 	return &SSTable{
-		header: NewSSTableHeader(),
+		header: *NewSSTableHeader(),
 		Index:  make(map[string]uint32),
 		Data:   make([]Block, 0),
 	}
 }
 
 func (s *SSTable) Write() error {
-	// create file
-	file, err := os.OpenFile(s.FileName, os.O_RDWR|os.O_CREATE, 0666)
+	/*
+		storing the contents of SSTable to disk.
+
+		file layout
+		0			  4			m		  n
+		----------------------------------
+		| indexOffset |  data  |  index  |
+		---------------------------------
+		indexOffset: byte offset from where index begins
+		data: s.Data (key-value data)
+		index: s.Index
+	*/
+
+	// open file desc (os.O_RDWR, 0666)
+	file, err := os.Create(s.FileName)
 	if err != nil {
 		return err
 	}
 	defer file.Close()
 
-	// write key-value data to file
-	file.Write(s.Data)
-	// get offset from where index starts, write to EOF
-	indexOffset := len(s.Data)
+	// write indexOffset
+	var indexOffset uint32 = uint32(len(s.Data) + 4)
+	err = binary.Write(file, binary.LittleEndian, indexOffset)
+	if err != nil {
+		return err
+	}
 
-	// serialize index
+	// write s.Data
 	buf := new(bytes.Buffer)
 	enc := gob.NewEncoder(buf)
+	err = enc.Encode(s.Data)
+	if err != nil {
+		return err
+	}
+	dataBytes := buf.Bytes()
+	file.Write(dataBytes)
+
+	// create buffer
+	buf = new(bytes.Buffer)
+	// create serializer
+	enc = gob.NewEncoder(buf)
+	// serialize s.Index
 	err = enc.Encode(s.Index)
 	if err != nil {
 		return err
 	}
-	// convert serialized index to byte array
+	// convert to byte array
 	indexBytes := buf.Bytes()
-	// write byte array
-	file.Write(indexOffset)
-	// write index offset to last 4 bytes
-	err = binary.Write(file, binary.LittleEndian, uint32(indexOffset))
-	if err != nil {
-		return err
-	}
+	// write to file
+	file.Write(indexBytes)
+
 	return nil
 }
 
 func (s *SSTable) Read() error {
-	var indexOffset uint32
+
 	file, err := os.Open(s.FileName)
 	if err != nil {
 		return err
 	}
-	defer file.Close()
 
-	// get file info
-	fileInfo, err = file.Stat()
+	var indexOffset uint32
+	// read first 4 bytes and store in indexOffset
+	binary.Read(file, binary.LittleEndian, &indexOffset)
+
+	// goal: read k-v data
+	// 1. Get size of s.Data
+	dataSize := int64(indexOffset) - 4
+	// 2. create empty byte array
+	dataBytes := make([]byte, dataSize)
+	// 3. move pointer to start of k-v data
+	file.Seek(4, 0)
+	// 4. Read data into byte array
+	file.Read(dataBytes)
+
+	// goal: deserialize k-v data into s.Data
+	// 1. create buffer with data byte array
+	buf := bytes.NewBuffer(dataBytes)
+	// 2. create decoder
+	dec := gob.NewDecoder(buf)
+	// 3. deserialize k-v data into s.Data
+	err = dec.Decode(&s.Data)
 	if err != nil {
 		return err
 	}
-	// get file size
+
+	// goal: read index from file
+	// 1. get file size
+	fileInfo, err := file.Stat()
+	if err != nil {
+		return err
+	}
 	fileSize := fileInfo.Size()
-
-	// goal: get indexOffset by reading last 4 bytes
-	// 1. move pointer to n-4 bytes
-	indexEnd := file.Seek(-4, os.SEEK_END)
-	// 2. store value of file.bytes[n-4,n] in indexOffset
-	binary.Read(file, binary.LittleEndian, &indexOffset)
-
-	// goal: read index
-	// 1. get size of index
-	indexSize := fileSize - indexEnd
-	// 2. create byte array
+	// 2. get size of index
+	indexSize := fileSize - (dataSize + 4)
+	// 3. create byte array
 	indexBytes := make([]byte, indexSize)
-	// 3. move pointer to start of index
-	file.Seek(int64(indexOffset), os.SEEK_SET)
-	// 4. read index into byte array
+	// 4. move pointer to start of index
+	file.Seek(int64(indexOffset), 0)
+	// 5. read index into byte array
 	file.Read(indexBytes)
 
-	// goal: deserialize index
+	// goal: deserialize index into s.Index
 	// 1. create buffer with index byte array
-	buf := bytes.NewBuffer(indexBytes)
+	buf = bytes.NewBuffer(indexBytes)
 	// 2. create decoder
-	dec := gob.NewDecoder(buf)
-	// 3. deserialize and store in s.Index
+	dec = gob.NewDecoder(buf)
+	// 3. deserializer index data into s.Index
 	err = dec.Decode(&s.Index)
 	if err != nil {
 		return err
 	}
-
-	// goal: read key-value data
-	// 1. create empty byte array
-	s.Data = make([]byte, indexOffset)
-	// 2. move pointer to start of file
-	file.Seek(0, os.SEEK_SET)
-	// 3. store data in s.Data
-	file.Read(s.Data)
 
 	return nil
 }
