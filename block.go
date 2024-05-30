@@ -14,7 +14,7 @@ BlockHeader layout
 ----------------
 
 Block.Data layout
- 0	 	 	    4		       8	 k	  v	
+ 0	 	 	    4		       8	 k	  v
  ------------------------------------------
 | key-size (k) | val-size (v) | key	| val |
 ------------------------------------------
@@ -50,7 +50,6 @@ func (bh *BlockHeader) SetOffset(offset uint32) {
 func (bh *BlockHeader) GetOffset() uint32 {
 	return bh.offset
 }
-
 
 // --- block ---
 
@@ -104,7 +103,7 @@ func (b *Block) Get(offset uint32, key string) (string, error) {
 
 func (b *Block) Put(kv KeyValue) error {
 	offset := b.header.GetOffset()
-	if offset + kv.GetSize() > BLOCK_DATA_SIZE {
+	if offset+kv.GetSize() > BLOCK_DATA_SIZE {
 		return errors.New("insufficient space")
 	}
 
@@ -114,12 +113,13 @@ func (b *Block) Put(kv KeyValue) error {
 	keyEnd := keyStart + keySize
 	valEnd := keyEnd + valSize
 
-	Putuint32(b.Data[offset: offset+KEY_SIZE], keySize)
-	Putuint32(b.Data[offset+KEY_SIZE: keyStart], valSize)
-	Putuint32(b.Data[keyStart: keyEnd], kv.Key)
-	Putuint32(b.Data[keyEnd: valEnd], kv.Value)
-	
+	Putuint32(b.Data[offset:offset+KEY_SIZE], keySize)
+	Putuint32(b.Data[offset+KEY_SIZE:keyStart], valSize)
+	copy(b.Data[keyStart:keyEnd], kv.Key)
+	copy(b.Data[keyEnd:valEnd], kv.Value)
+
 	b.header.SetOffset(keySize + KEY_SIZE + VAL_SIZE)
 	b.header.count += 1
 
+	return nil
 }
