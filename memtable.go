@@ -38,8 +38,16 @@ func (mt *MemTable) clear() error {
 }
 
 func (mt *MemTable) flush() error {
+	/*
+		create new SSTable
+		iterate over KeyValue entries
+			- increase slice until it exceeds block size
+			- create block in SSTable
+		write SSTable to disk
+		clear MemTable
+	*/
 	var err error
-	// flush to disk
+
 	i := 0
 	var curSize uint32 = 0
 	sst := NewSSTable()

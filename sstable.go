@@ -45,6 +45,13 @@ func (s *SSTable) AddIndex(key string, offset uint32) {
 }
 
 func (s *SSTable) CreateBlock(entries []KeyValue) error {
+	/*
+		iterate over each KeyValue pair
+		add it to block
+		update index
+		add block to s.Data
+		update header
+	*/
 	var offset uint32
 	var err error
 
@@ -71,8 +78,8 @@ func (s *SSTable) Write() error {
 		storing the contents of SSTable to disk.
 
 		file layout
-		 0			   4		m		  n
-		 ---------------------------------
+		 0            4        m         n
+		---------------------------------
 		| indexOffset |  data  |  index  |
 		---------------------------------
 		indexOffset: byte offset from where index begins
