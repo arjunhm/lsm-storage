@@ -1,6 +1,9 @@
 package lsm
 
-import "strings"
+import (
+	"errors"
+	"strings"
+)
 
 const (
 	BLOCK_SIZE        uint32 = 4096 // 4KB
@@ -41,7 +44,7 @@ type Block struct {
 
 func NewBlock() *Block {
 	return &Block{
-		header: NewBlockHeader(),
+		header: *NewBlockHeader(),
 		Data:   make([]byte, BLOCK_DATA_SIZE),
 	}
 }
@@ -61,7 +64,7 @@ func (b *Block) Get(offset uint32, key string) (string, error) {
 			break
 		}
 		keySize = Getuint32(b.Data[offset : offset+KEY_SIZE])
-		keyStart = offset + KEY_SIZE + VAL + SIZE
+		keyStart = offset + KEY_SIZE + VAL_SIZE
 		keyEnd = keyStart + keySize
 
 		valSize = Getuint32(b.Data[offset+KEY_SIZE : keyStart])
